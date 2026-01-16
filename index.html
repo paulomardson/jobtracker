@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Job Application Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        border: "hsl(214.3 31.8% 91.4%)",
+                        input: "hsl(214.3 31.8% 91.4%)",
+                        ring: "hsl(222.2 84% 4.9%)",
+                        background: "hsl(0 0% 100%)",
+                        foreground: "hsl(222.2 84% 4.9%)",
+                        primary: {
+                            DEFAULT: "hsl(222.2 47.4% 11.2%)",
+                            foreground: "hsl(210 40% 98%)",
+                        },
+                        secondary: {
+                            DEFAULT: "hsl(210 40% 96.1%)",
+                            foreground: "hsl(222.2 47.4% 11.2%)",
+                        },
+                        muted: {
+                            DEFAULT: "hsl(210 40% 96.1%)",
+                            foreground: "hsl(215.4 16.3% 46.9%)",
+                        },
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        * { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50">
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-4xl font-bold tracking-tight text-foreground mb-2">Job Applications</h1>
+            <p class="text-muted-foreground">Gerencie e acompanhe suas candidaturas de emprego</p>
+        </div>
+
+        <!-- Actions Bar -->
+        <div class="flex gap-3 mb-6 flex-wrap">
+            <button onclick="openModal()" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+                <span class="mr-2">+</span> Nova Candidatura
+            </button>
+            <button onclick="exportData()" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none border border-input bg-background hover:bg-slate-100 h-10 px-4 py-2">
+                <span class="mr-2">↓</span> Exportar
+            </button>
+            <button onclick="importData()" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none border border-input bg-background hover:bg-slate-100 h-10 px-4 py-2">
+                <span class="mr-2">↑</span> Importar
+            </button>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="grid gap-4 md:grid-cols-4 mb-6">
+            <div class="rounded-lg border bg-card text-card-foreground shadow-sm bg-white p-6">
+                <div class="flex flex-col space-y-1.5">
+                    <h3 class="text-sm font-medium text-muted-foreground">Total de Candidaturas</h3>
+                    <div class="text-3xl font-bold" id="totalCount">0</div>
+                </div>
+            </div>
+            <div class="rounded-lg border bg-card text-card-foreground shadow-sm bg-white p-6">
+                <div class="flex flex-col space-y-1.5">
+                    <h3 class="text-sm font-medium text-muted-foreground">Aplicadas</h3>
+                    <div class="text-3xl font-bold text-blue-600" id="appliedCount">0</div>
+                </div>
+            </div>
+            <div class="rounded-lg border bg-card text-card-foreground shadow-sm bg-white p-6">
+                <div class="flex flex-col space-y-1.5">
+                    <h3 class="text-sm font-medium text-muted-foreground">Em Entrevista</h3>
+                    <div class="text-3xl font-bold text-amber-600" id="interviewCount">0</div>
+                </div>
+            </div>
+            <div class="rounded-lg border bg-card text-card-foreground shadow-sm bg-white p-6">
+                <div class="flex flex-col space-y-1.5">
+                    <h3 class="text-sm font-medium text-muted-foreground">Ofertas</h3>
+                    <div class="text-3xl font-bold text-green-600" id="offerCount">0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="rounded-lg border bg-card shadow-sm bg-white p-4 mb-6">
+            <div class="flex gap-4 flex-wrap">
+                <select id="statusFilter" onchange="filterApplications()" class="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                    <option value="">Todos os Status</option>
+                    <option value="applied">Aplicada</option>
+                    <option value="interview">Entrevista</option>
+                    <option value="offer">Oferta</option>
+                    <option value="rejected">Rejeitada</option>
+                </select>
+                <input type="text" id="searchInput" onkeyup="filterApplications()" placeholder="Buscar empresa ou cargo..." class="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm flex-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            </div>
+        </div>
+
+        <!-- Applications Table -->
+        <div class="rounded-lg border bg-card shadow-sm bg-white overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full caption-bottom text-sm">
+                    <thead class="border-b">
+                        <tr class="border-b transition-colors hover:bg-muted/50">
+                            <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Empresa</th>
+                            <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Cargo</th>
+                            <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Data</th>
+                            <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Status</th>
+                            <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="applicationsTable" class="[&_tr:last-child]:border-0">
+                        <!-- Applications will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="emptyState" class="hidden flex flex-col items-center justify-center py-16 text-center">
+                <div class="rounded-full bg-muted p-3 mb-4">
+                    <svg class="h-6 w-6 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold mb-1">Nenhuma candidatura encontrada</h3>
+                <p class="text-sm text-muted-foreground">Comece adicionando sua primeira candidatura</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div id="modal" class="hidden fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-lg max-w-lg w-full">
+            <div class="flex flex-col space-y-1.5 p-6 border-b">
+                <h2 class="text-lg font-semibold leading-none tracking-tight" id="modalTitle">Nova Candidatura</h2>
+                <p class="text-sm text-muted-foreground">Adicione os detalhes da sua candidatura</p>
+            </div>
+            <form id="applicationForm" onsubmit="saveApplication(event)" class="p-6 space-y-4">
+                <div class="space-y-2">
+                    <label class="text-sm font-medium leading-none" for="company">Empresa</label>
+                    <input type="text" id="company" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" placeholder="Google">
+                </div>
+                <div class="space-y-2">
+                    <label class="text-sm font-medium leading-none" for="position">Cargo</label>
+                    <input type="text" id="position" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" placeholder="Software Engineer">
+                </div>
+                <div class="space-y-2">
+                    <label class="text-sm font-medium leading-none" for="date">Data de Aplicação</label>
+                    <input type="date" id="date" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                </div>
+                <div class="space-y-2">
+                    <label class="text-sm font-medium leading-none" for="status">Status</label>
+                    <select id="status" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                        <option value="applied">Aplicada</option>
+                        <option value="interview">Entrevista</option>
+                        <option value="offer">Oferta</option>
+                        <option value="rejected">Rejeitada</option>
+                    </select>
+                </div>
+                <div class="space-y-2">
+                    <label class="text-sm font-medium leading-none" for="notes">Notas</label>
+                    <textarea id="notes" rows="3" class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" placeholder="Informações adicionais..."></textarea>
+                </div>
+                <div class="flex gap-3 pt-4">
+                    <button type="submit" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 flex-1">
+                        Salvar
+                    </button>
+                    <button type="button" onclick="closeModal()" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none border border-input bg-background hover:bg-slate-100 h-10 px-4 py-2 flex-1">
+                        Cancelar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <input type="file" id="importFile" accept=".json" class="hidden" onchange="handleImport(event)">
+
+    <script>
+        let applications = [];
+        let editingId = null;
+
+        window.onload = function() {
+            loadApplications();
+            setTodayDate();
+        };
+
+        function setTodayDate() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('date').value = today;
+        }
+
+        function loadApplications() {
+            const stored = localStorage.getItem('jobApplications');
+            applications = stored ? JSON.parse(stored) : [];
+            renderApplications();
+            updateStats();
+        }
+
+        function saveToLocalStorage() {
+            localStorage.setItem('jobApplications', JSON.stringify(applications));
+        }
+
+        function openModal(id = null) {
+            editingId = id;
+            const modal = document.getElementById('modal');
+            const form = document.getElementById('applicationForm');
+            const title = document.getElementById('modalTitle');
+            
+            if (id) {
+                title.textContent = 'Editar Candidatura';
+                const app = applications.find(a => a.id === id);
+                document.getElementById('company').value = app.company;
+                document.getElementById('position').value = app.position;
+                document.getElementById('date').value = app.date;
+                document.getElementById('status').value = app.status;
+                document.getElementById('notes').value = app.notes || '';
+            } else {
+                title.textContent = 'Nova Candidatura';
+                form.reset();
+                setTodayDate();
+            }
+            
+            modal.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.add('hidden');
+            document.getElementById('applicationForm').reset();
+            editingId = null;
+        }
+
+        function saveApplication(e) {
+            e.preventDefault();
+            
+            const application = {
+                id: editingId || Date.now(),
+                company: document.getElementById('company').value,
+                position: document.getElementById('position').value,
+                date: document.getElementById('date').value,
+                status: document.getElementById('status').value,
+                notes: document.getElementById('notes').value
+            };
+
+            if (editingId) {
+                const index = applications.findIndex(a => a.id === editingId);
+                applications[index] = application;
+            } else {
+                applications.push(application);
+            }
+
+            saveToLocalStorage();
+            renderApplications();
+            updateStats();
+            closeModal();
+        }
+
+        function deleteApplication(id) {
+            if (confirm('Tem certeza que deseja excluir esta candidatura?')) {
+                applications = applications.filter(a => a.id !== id);
+                saveToLocalStorage();
+                renderApplications();
+                updateStats();
+            }
+        }
+
+        function getStatusBadge(status) {
+            const badges = {
+                applied: '<span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors bg-blue-50 text-blue-700 border-blue-200">Aplicada</span>',
+                interview: '<span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors bg-amber-50 text-amber-700 border-amber-200">Entrevista</span>',
+                offer: '<span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors bg-green-50 text-green-700 border-green-200">Oferta</span>',
+                rejected: '<span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors bg-red-50 text-red-700 border-red-200">Rejeitada</span>'
+            };
+            return badges[status] || status;
+        }
+
+        function renderApplications() {
+            const tbody = document.getElementById('applicationsTable');
+            const emptyState = document.getElementById('emptyState');
+            
+            let filtered = [...applications];
+            const statusFilter = document.getElementById('statusFilter').value;
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+
+            if (statusFilter) {
+                filtered = filtered.filter(a => a.status === statusFilter);
+            }
+
+            if (searchTerm) {
+                filtered = filtered.filter(a => 
+                    a.company.toLowerCase().includes(searchTerm) ||
+                    a.position.toLowerCase().includes(searchTerm)
+                );
+            }
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            tbody.innerHTML = filtered.map(app => `
+                <tr class="border-b transition-colors hover:bg-muted/50">
+                    <td class="p-4 align-middle font-medium">${app.company}</td>
+                    <td class="p-4 align-middle">${app.position}</td>
+                    <td class="p-4 align-middle text-muted-foreground">${new Date(app.date).toLocaleDateString('pt-BR')}</td>
+                    <td class="p-4 align-middle">${getStatusBadge(app.status)}</td>
+                    <td class="p-4 align-middle">
+                        <div class="flex gap-2">
+                            <button onclick="openModal(${app.id})" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-slate-100 h-8 w-8">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                </svg>
+                            </button>
+                            <button onclick="deleteApplication(${app.id})" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-slate-100 text-red-600 h-8 w-8">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function filterApplications() {
+            renderApplications();
+        }
+
+        function updateStats() {
+            document.getElementById('totalCount').textContent = applications.length;
+            document.getElementById('appliedCount').textContent = applications.filter(a => a.status === 'applied').length;
+            document.getElementById('interviewCount').textContent = applications.filter(a => a.status === 'interview').length;
+            document.getElementById('offerCount').textContent = applications.filter(a => a.status === 'offer').length;
+        }
+
+        function exportData() {
+            const dataStr = JSON.stringify(applications, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `job-applications-${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function importData() {
+            document.getElementById('importFile').click();
+        }
+
+        function handleImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if (confirm(`Importar ${imported.length} candidaturas? Isso substituirá os dados atuais.`)) {
+                        applications = imported;
+                        saveToLocalStorage();
+                        renderApplications();
+                        updateStats();
+                        alert('Dados importados com sucesso!');
+                    }
+                } catch (error) {
+                    alert('Erro ao importar arquivo. Verifique se o formato está correto.');
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+    </script>
+</body>
+</html>
